@@ -180,6 +180,19 @@ nav.bottom .nb.active .t{font-weight:600}
 
 /* 保存提示 */
 .hint{font-size:11px;color:var(--ink-faint);text-align:center;margin-top:10px;letter-spacing:.5px}
+
+/* 形象卡片 */
+.avatar-card{text-align:center}
+.avatar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.avatar-edit{font-size:12px;color:var(--accent);background:none;border:1px solid var(--accent-soft);border-radius:16px;padding:4px 12px;cursor:pointer}
+.avatar-box{display:flex;justify-content:center;padding:6px 0}
+.avatar-caption{font-size:12px;color:var(--ink-soft);margin-top:6px;letter-spacing:.5px}
+
+/* 弹窗 */
+.modal-mask{position:fixed;inset:0;z-index:60;background:rgba(47,42,38,.45);display:flex;align-items:flex-end;justify-content:center}
+.modal{background:var(--card);border-radius:20px 20px 0 0;padding:22px 20px 30px;width:100%;max-width:520px;box-shadow:0 -8px 30px rgba(0,0,0,.15)}
+.modal h3{font-family:var(--serif);margin:0 0 16px;font-size:18px}
+.modal .form-submit{margin-top:6px}
 </style>
 </head>
 <body>
@@ -209,6 +222,15 @@ nav.bottom .nb.active .t{font-weight:600}
     </div>
 
     <div class="scene-tabs" id="sceneTabs"></div>
+
+    <div class="card avatar-card" id="avatarCard">
+      <div class="avatar-head">
+        <h2 style="margin:0"><span class="tick"></span>今日形象</h2>
+        <button class="avatar-edit" onclick="openAvatarSettings()">形象设置</button>
+      </div>
+      <div id="avatarBox" class="avatar-box"></div>
+      <div class="avatar-caption" id="avatarCaption"></div>
+    </div>
 
     <div class="card outfit-card">
       <h2><span class="tick"></span>今日建议搭配</h2>
@@ -277,6 +299,11 @@ nav.bottom .nb.active .t{font-weight:600}
         </select>
       </div>
       <div class="form-row">
+        <label>颜色</label>
+        <div class="chip-row" id="fColorChips"></div>
+        <input type="color" id="fColorCustom" value="#8A7A6A" style="width:44px;height:34px;border:none;padding:0;margin-top:8px;background:none;cursor:pointer" title="自定义颜色">
+      </div>
+      <div class="form-row">
         <label>适合风格（可多选）</label>
         <div class="chip-row" id="fStyle"></div>
       </div>
@@ -300,6 +327,22 @@ nav.bottom .nb.active .t{font-weight:600}
 </nav>
 
 <div id="toast"></div>
+
+<!-- 形象设置弹窗 -->
+<div class="modal-mask" id="avatarModal" style="display:none">
+  <div class="modal">
+    <h3>形象设置</h3>
+    <div class="form-row">
+      <label>发型</label>
+      <div class="chip-row" id="hairChips"></div>
+    </div>
+    <div class="form-row">
+      <label>肤色</label>
+      <div class="chip-row" id="skinChips"></div>
+    </div>
+    <button class="form-submit" onclick="saveAvatar()">保存形象</button>
+  </div>
+</div>
 
 <script>
 /* ===== 配置 ===== */
@@ -339,17 +382,17 @@ load();
 /* ===== 示例衣物库 ===== */
 if(items.length===0){
   items=[
-    {_seed:true,name:'米色羊毛大衣',cat:'外套',styles:['通勤','正式','简约'],weathers:['秋','冬','冷'],note:'通勤百搭'},
-    {_seed:true,name:'藏青西装外套',cat:'外套',styles:['通勤','正式'],weathers:['秋','春'],note:'见客户'},
-    {_seed:true,name:'白色真丝衬衫',cat:'上装',styles:['通勤','温柔','正式'],weathers:['夏','秋'],note:'显气质'},
-    {_seed:true,name:'燕麦色针织衫',cat:'上装',styles:['休闲','温柔','简约'],weathers:['秋','冬'],note:'柔软'},
-    {_seed:true,name:'黑色高腰阔腿裤',cat:'下装',styles:['通勤','简约','正式'],weathers:['秋','冬','春'],note:'显瘦'},
-    {_seed:true,name:'直筒牛仔裤',cat:'下装',styles:['休闲','简约'],weathers:['春','秋','冬'],note:'百搭'},
-    {_seed:true,name:'藏蓝连衣裙',cat:'连衣裙',styles:['温柔','正式','通勤'],weathers:['春','夏','秋'],note:'遮肉'},
-    {_seed:true,name:'白色运动鞋',cat:'鞋',styles:['休闲','运动','简约'],weathers:['夏','春','秋'],note:'百搭'},
-    {_seed:true,name:'黑色乐福鞋',cat:'鞋',styles:['通勤','正式'],weathers:['春','秋'],note:'干练'},
-    {_seed:true,name:'米色托特包',cat:'包',styles:['通勤','简约'],weathers:['春','夏','秋','冬'],note:'装得多'},
-    {_seed:true,name:'真丝方巾',cat:'配饰',styles:['通勤','温柔'],weathers:['春','秋'],note:'点亮'}
+    {_seed:true,name:'米色羊毛大衣',cat:'外套',color:'#D9C7A7',styles:['通勤','正式','简约'],weathers:['秋','冬','冷'],note:'通勤百搭'},
+    {_seed:true,name:'藏青西装外套',cat:'外套',color:'#2E3A4F',styles:['通勤','正式'],weathers:['秋','春'],note:'见客户'},
+    {_seed:true,name:'白色真丝衬衫',cat:'上装',color:'#F5F1EA',styles:['通勤','温柔','正式'],weathers:['夏','秋'],note:'显气质'},
+    {_seed:true,name:'燕麦色针织衫',cat:'上装',color:'#C9A66B',styles:['休闲','温柔','简约'],weathers:['秋','冬'],note:'柔软'},
+    {_seed:true,name:'黑色高腰阔腿裤',cat:'下装',color:'#3A3A3A',styles:['通勤','简约','正式'],weathers:['秋','冬','春'],note:'显瘦'},
+    {_seed:true,name:'直筒牛仔裤',cat:'下装',color:'#5A6E8C',styles:['休闲','简约'],weathers:['春','秋','冬'],note:'百搭'},
+    {_seed:true,name:'藏蓝连衣裙',cat:'连衣裙',color:'#33415C',styles:['温柔','正式','通勤'],weathers:['春','夏','秋'],note:'遮肉'},
+    {_seed:true,name:'白色运动鞋',cat:'鞋',color:'#F5F5F5',styles:['休闲','运动','简约'],weathers:['夏','春','秋'],note:'百搭'},
+    {_seed:true,name:'黑色乐福鞋',cat:'鞋',color:'#2B2B2B',styles:['通勤','正式'],weathers:['春','秋'],note:'干练'},
+    {_seed:true,name:'米色托特包',cat:'包',color:'#D9C7A7',styles:['通勤','简约'],weathers:['春','夏','秋','冬'],note:'装得多'},
+    {_seed:true,name:'真丝方巾',cat:'配饰',color:'#C2503E',styles:['通勤','温柔'],weathers:['春','秋'],note:'点亮'}
   ];
   save();
 }
@@ -449,6 +492,130 @@ function weatherNow(){return scene.weather}
 function currentTemp(){return scene.weather.temp}
 
 /* ===== 渲染 ===== */
+let lastPlan=[];
+/* 形象配置 */
+const HAIRS=[
+  {id:'bob',name:'短发',color:'#3B2E23'},
+  {id:'long',name:'长发',color:'#3B2E23'},
+  {id:'brown',name:'棕长',color:'#6B4A2F'}
+];
+const SKINS=[
+  {id:'fair',name:'白皙',color:'#F6D8C4'},
+  {id:'natural',name:'自然',color:'#EFC9A9'},
+  {id:'warm',name:'暖黄',color:'#E3B48C'}
+];
+let avatar={hair:'bob',skin:'natural'};
+try{avatar=Object.assign(avatar,JSON.parse(localStorage.getItem('wardrobe_avatar')||'{}'))}catch(e){}
+
+function renderAvatar(){
+  const box=document.getElementById('avatarBox');
+  const cap=document.getElementById('avatarCaption');
+  const plan=lastPlan;
+  // 从推荐中提取各部位颜色
+  const colorOf=(cat,fallback)=>{
+    const it=plan.find(o=>o.cat===cat);
+    return it&&it.item.color?it.item.color:fallback;
+  };
+  const skin=SKINS.find(s=>s.id===avatar.skin)||SKINS[1];
+  const hair=HAIRS.find(h=>h.id===avatar.hair)||HAIRS[0];
+  const hasDress=plan.some(o=>o.cat==='连衣裙');
+  const hasCoat=plan.some(o=>o.cat==='外套');
+  const topC=colorOf('上装','#E8D9C8');
+  const dressC=colorOf('连衣裙','#B8C4D0');
+  const bottomC=colorOf('下装','#5A6E8C');
+  const coatC=colorOf('外套','#8A7A6A');
+  const shoeC=colorOf('鞋','#2B2B2B');
+  const bagC=colorOf('包','#D9C7A7');
+  const scarfC=colorOf('配饰','#C2503E');
+  const sockC=colorOf('袜','#F5F5F5');
+  const coatVisible=hasCoat;
+  const innerTop=hasCoat?darken(coatC):(hasDress?dressC:topC);
+  const innerBottom=hasDress?dressC:bottomC;
+  const svg=`
+  <svg width="190" height="300" viewBox="0 0 190 300" xmlns="http://www.w3.org/2000/svg">
+    <!-- 背景圆 -->
+    <circle cx="95" cy="150" r="132" fill="${hasCoat?'#F3ECE3':'#F7F1E8'}" opacity=".55"/>
+    <!-- 包（背后） -->
+    ${plan.some(o=>o.cat==='包')?`<rect x="128" y="128" width="34" height="40" rx="8" fill="${bagC}" stroke="#00000022"/><path d="M143 128v-6c0-6-5-10-11-10s-11 4-11 10v6" fill="none" stroke="${bagC}" stroke-width="4"/>`:''}
+    <!-- 腿 -->
+    <path d="M78 196 L74 268" stroke="${innerBottom}" stroke-width="22" stroke-linecap="round"/>
+    <path d="M112 196 L116 268" stroke="${innerBottom}" stroke-width="22" stroke-linecap="round"/>
+    <!-- 袜 -->
+    ${plan.some(o=>o.cat==='袜')?`<path d="M74 246 L72 268 L84 268 L82 244" fill="${sockC}" stroke="#00000018"/><path d="M116 246 L118 268 L106 268 L108 244" fill="${sockC}" stroke="#00000018"/>`:''}
+    <!-- 鞋 -->
+    <ellipse cx="80" cy="274" rx="17" ry="7" fill="${shoeC}"/>
+    <ellipse cx="110" cy="274" rx="17" ry="7" fill="${shoeC}"/>
+    <!-- 身体（连衣裙或上下装） -->
+    ${hasDress?`
+      <path d="M70 118 L120 118 L128 200 L96 206 L62 200 Z" fill="${dressC}"/>
+      <path d="M62 200 L96 206 L128 200 L124 208 L96 214 L68 208 Z" fill="${darken(dressC,18)}"/>
+    `:`
+      <path d="M70 118 L120 118 L126 152 L64 152 Z" fill="${topC}"/>
+      <path d="M64 150 L126 150 L132 198 L58 198 Z" fill="${bottomC}"/>
+      <path d="M64 150 L126 150 L128 160 L62 160 Z" fill="${darken(bottomC,14)}"/>
+    `}
+    <!-- 手臂 -->
+    <path d="M70 122 L56 178 L62 182" stroke="${hasCoat?coatC:topC}" stroke-width="14" stroke-linecap="round" fill="none"/>
+    <path d="M120 122 L134 178 L128 182" stroke="${hasCoat?coatC:topC}" stroke-width="14" stroke-linecap="round" fill="none"/>
+    <circle cx="56" cy="182" r="6" fill="${skin.color}"/>
+    <circle cx="134" cy="182" r="6" fill="${skin.color}"/>
+    <!-- 外套 -->
+    ${hasCoat?`
+      <path d="M70 118 L120 118 L130 180 L64 180 Z" fill="${coatC}" opacity=".92"/>
+      <path d="M95 118 L95 170" stroke="#00000022" stroke-width="2"/>
+      <path d="M70 118 L120 118 L124 126 L66 126 Z" fill="${darken(coatC,10)}"/>
+    `:''}
+    <!-- 方巾 -->
+    ${plan.some(o=>o.cat==='配饰')?`<path d="M82 124 Q95 132 108 124 L106 132 Q95 138 84 132 Z" fill="${scarfC}"/>`:''}
+    <!-- 头 -->
+    <circle cx="95" cy="76" r="34" fill="${skin.color}"/>
+    <!-- 头发 -->
+    ${hair.id==='long'?`
+      <path d="M61 74 Q62 108 88 116 Q95 140 95 140 Q95 140 95 118 Q124 110 128 74 Q132 52 95 40 Q58 52 61 74 Z" fill="${hair.color}"/>
+      <path d="M61 74 Q58 96 66 110 Q62 92 66 78 Z" fill="${darken(hair.color,10)}"/>
+      <path d="M129 74 Q132 96 124 110 Q128 92 124 78 Z" fill="${darken(hair.color,10)}"/>
+    `:hair.id==='brown'?`
+      <path d="M66 74 Q64 104 95 118 Q100 140 102 142 Q104 140 102 122 Q102 112 102 106 Q128 100 127 74 Q130 50 95 40 Q60 50 66 74 Z" fill="${hair.color}"/>
+      <path d="M66 74 Q60 90 64 100 Q68 88 70 78 Z" fill="${darken(hair.color,10)}"/>
+      <path d="M127 74 Q132 90 128 100 Q124 88 122 78 Z" fill="${darken(hair.color,10)}"/>
+    `:`
+      <path d="M66 78 Q64 58 95 44 Q126 58 124 78 Q124 58 112 48 L95 42 L78 48 Q66 58 66 78 Z" fill="${hair.color}"/>
+      <path d="M66 74 Q60 82 62 90 Q66 84 70 80 Z" fill="${darken(hair.color,10)}"/>
+      <path d="M124 74 Q130 82 128 90 Q124 84 120 80 Z" fill="${darken(hair.color,10)}"/>
+    `}
+    <!-- 眼睛 -->
+    <circle cx="85" cy="76" r="2.4" fill="#3A3128"/>
+    <circle cx="105" cy="76" r="2.4" fill="#3A3128"/>
+    <!-- 腮红 -->
+    <ellipse cx="79" cy="82" rx="5" ry="3" fill="#E89A8A" opacity=".4"/>
+    <ellipse cx="111" cy="82" rx="5" ry="3" fill="#E89A8A" opacity=".4"/>
+    <!-- 微笑 -->
+    <path d="M89 83 Q95 88 101 83" stroke="#A56A5A" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  </svg>`;
+  box.innerHTML=svg;
+  const parts=[];
+  if(hasCoat)parts.push('外套');
+  if(plan.some(o=>o.cat==='上装'))parts.push('上装');
+  if(plan.some(o=>o.cat==='连衣裙'))parts.push('连衣裙');
+  if(plan.some(o=>o.cat==='下装'))parts.push('下装');
+  if(plan.some(o=>o.cat==='鞋'))parts.push('鞋');
+  if(plan.some(o=>o.cat==='包'))parts.push('包');
+  cap.textContent='形象 · '+parts.join('/')+(plan.length?(' · '+plan.length+' 件'):'');
+}
+function darken(hex,amt=16){
+  let h=hex.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');
+  let n=parseInt(h,16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.max(0,r-amt);g=Math.max(0,g-amt);b=Math.max(0,b-amt);
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+function openAvatarSettings(){
+  document.getElementById('hairChips').innerHTML=HAIRS.map(h=>`<button type="button" class="chip-sel${h.id===avatar.hair?' on':''}" data-h="${h.id}" onclick="pickHair('${h.id}')">${h.name}</button>`).join('');
+  document.getElementById('skinChips').innerHTML=SKINS.map(s=>`<button type="button" class="chip-sel${s.id===avatar.skin?' on':''}" data-s="${s.id}" onclick="pickSkin('${s.id}')">${s.name}</button>`).join('');
+  document.getElementById('avatarModal').style.display='flex';
+}
+function pickHair(id){avatar.hair=id;document.querySelectorAll('#hairChips .chip-sel').forEach(b=>b.classList.toggle('on',b.dataset.h===id))}
+function pickSkin(id){avatar.skin=id;document.querySelectorAll('#skinChips .chip-sel').forEach(b=>b.classList.toggle('on',b.dataset.s===id))}
+function saveAvatar(){localStorage.setItem('wardrobe_avatar',JSON.stringify(avatar));document.getElementById('avatarModal').style.display='none';renderAvatar();toast('形象已更新')}
 function renderScenes(){
   document.getElementById('sceneTabs').innerHTML=SCENES.map(s=>`<button class="scene-tab${s.id===scene.scene?' active':''}" onclick="setScene('${s.id}')"><span class="sc">${s.sc}</span>${s.name}</button>`).join('');
 }
@@ -462,6 +629,8 @@ function renderWeather(){
 }
 function renderOutfit(){
   const plan=generate();
+  lastPlan=plan;
+  renderAvatar();
   const list=document.getElementById('outfitList');
   if(plan.length===0){
     list.innerHTML='<div class="empty"><span class="big-ic">🧺</span>衣橱还没有适合今天天气+场景的搭配，去添加衣物吧</div>';
@@ -536,7 +705,7 @@ function renderCloset(){
     <div class="closet-card">
       <button class="del" onclick="delItem(${items.indexOf(i)})">✕</button>
       <div class="ph">${i.photo?`<img src="${i.photo}">`:emoticon(i.cat)}</div>
-      <div class="cat2">${i.cat}</div>
+      <div class="cat2">${i.cat} ${i.color?`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${i.color};vertical-align:-1px;margin-left:3px;border:1px solid #00000018"></span>`:''}</div>
       <div class="nm">${i.name}</div>
       <div class="sty">${(i.styles||[]).slice(0,3).join(' · ')}</div>
       ${badges(i.weathers||[])}
@@ -556,12 +725,19 @@ function delItem(idx){
 }
 
 /* ================= 添加表单 ================= */
+const COLOR_CHIPS=['#D9C7A7','#F5F1EA','#3A3A3A','#5A6E8C','#33415C','#C2503E','#C9A66B','#7D8A74','#8A7A6A','#E8D9C8'];
+let fColor='#8A7A6A';
 function renderForm(){
   document.getElementById('fStyle').innerHTML=STYLES.map(s=>
     `<button type="button" class="chip-sel" data-s="${s}" onclick="toggleChip(this,'style')">${s}</button>`).join('');
   document.getElementById('fWeather').innerHTML=WEATHERS.map(w=>
     `<button type="button" class="chip-sel" data-w="${w}" onclick="toggleChip(this,'weather')">${w}</button>`).join('');
+  document.getElementById('fColorChips').innerHTML=COLOR_CHIPS.map(c=>
+    `<button type="button" class="chip-sel color-chip${c===fColor?' on':''}" data-c="${c}" style="background:${c};width:26px;height:26px;border-radius:50%;padding:0;border:2px solid ${c===fColor?'var(--ink)':'var(--line)'}" onclick="pickColor('${c}')"></button>`).join('');
+  document.getElementById('fColorCustom').value=fColor;
 }
+function pickColor(c){fColor=c;document.querySelectorAll('#fColorChips .color-chip').forEach(b=>{b.classList.toggle('on',b.dataset.c===c);b.style.border='2px solid '+(b.dataset.c===c?'var(--ink)':'var(--line)')});document.getElementById('fColorCustom').value=c}
+document.getElementById('fColorCustom').addEventListener('input',e=>{fColor=e.target.value;pickColor(fColor)});
 function toggleChip(el,kind){el.classList.toggle('on')}
 function previewPhoto(){
   const f=document.getElementById('fPhoto');
@@ -587,7 +763,7 @@ function saveForm(){
   const weathers=[...document.querySelectorAll('#fWeather .on')].map(e=>e.dataset.w);
   const note=document.getElementById('fNote').value.trim();
   const photo=document.getElementById('photoImg').src||'';
-  items.push({name,cat,styles,weathers,note,photo});
+  items.push({name,cat,color:fColor,styles,weathers,note,photo});
   save();clearForm();toast('已添加「'+name+'」');
   switchTab('closet');
 }
@@ -596,6 +772,9 @@ function clearForm(){
   document.getElementById('fNote').value='';
   document.getElementById('fPhoto').value='';
   document.getElementById('photoPrev').style.display='none';
+  fColor='#8A7A6A';
+  document.querySelectorAll('#fColorChips .color-chip').forEach(b=>{b.classList.remove('on');b.style.border='2px solid var(--line)'});
+  document.getElementById('fColorCustom').value='#8A7A6A';
   document.querySelectorAll('#fStyle .on,#fWeather .on').forEach(e=>e.classList.remove('on'));
 }
 
