@@ -732,36 +732,62 @@ let fColor='#8A7A6A';
 
 /* ===== 照片本地识别（纯 Canvas 分析，无需联网/模型） ===== */
 let aiModel=null,aiLoading=null,aiLoaded=false;
+/* HSV 颜色命名：色相分桶 + HSV 饱和度/明度判断，可靠且符合直觉 */
 function hexToColorName(hex){
   let h=hex.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');
   const n=parseInt(h,16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
-  const mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx-mn;
-  if(mx<45)return '黑色';
-  if(mn>220)return '白色';
-  if(sat<28){return mx>190?'浅灰':'灰色'}
-  if(r>190&&g<130&&b<130)return '红色';
-  if(r>150&&g<100&&b<90)return '酒红';
-  if(r>180&&g>120&&b<100)return '橙色';
-  if(r>200&&g>170&&b<180&&(r-b)>40)return '米色';
-  if(r>200&&g>180&&b<130)return '燕麦';
-  if(r>170&&g>150&&b<100)return '卡其';
-  if(r>130&&g>105&&b<85)return '棕色';
-  if(r<120&&g<100&&b<90)return '深棕';
-  if(r>190&&g>150&&b<110)return '驼色';
-  if(r<110&&g<95&&b>110)return '藏蓝';
-  // 深蓝/藏蓝放宽：整体偏蓝且 B 通道高于 R
-  if(r<120&&g<110&&b>=90&&b>r+20)return '深蓝';
-  if(r<130&&g<120&&b>=r+40)return '藏蓝';
-  if(r>140&&g>140&&b<170&&b>r)return '紫色';
-  if(r>150&&g>110&&b<130)return '粉色';
-  if(r>160&&g>180&&b<150)return '浅绿';
-  if(r<120&&g>130&&b<110)return '墨绿';
-  if(r>140&&g>150&&b<150)return '灰色';
-  if(r>180&&g>190&&b>190)return '浅灰';
-  return '复古';
+  const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d255=mx-mn;
+  const V=mx/255;                    // 明度 0~1
+  const sat=mx>0?d255/mx:0;          // HSV 饱和度 0~1
+  // 无彩色：黑/白/灰
+  if(sat<0.15){
+    if(V<0.22)return '黑色';
+    if(V>0.85)return '白色';
+    return V>0.6?'浅灰':'灰色';
+  }
+  // 色相（0~255 域整数差）
+  let hue=0;
+  if(d255>0){
+    if(mx===r)hue=60*(((g-b)/d255)%6);
+    else if(mx===g)hue=60*((b-r)/d255+2);
+    else hue=60*((r-g)/d255+4);
+  }
+  if(hue<0)hue+=360;
+  const dark=V<0.3, light=V>0.72;
+  // 红色（含浅红/粉）
+  if(hue<10||hue>=350){
+    if(dark)return '酒红';
+    if(light&&sat<0.35)return '粉色';
+    if(light&&r>210&&g>120)return '粉色';
+    return '红色';
+  }
+  if(hue<18){return V<0.35?'棕色':'橙色';}
+  if(hue<38){return light?'杏色':(V<0.45?'棕色':'卡其');}
+  if(hue<50){return V<0.4?'深棕':'卡其';}
+  if(hue<62){return light?'米色':(V<0.45?'棕色':'卡其');}
+  if(hue<75){return '米色';}
+  // 绿（100~170）
+  if(hue<170){
+    if(V<0.38)return '墨绿';
+    if(light)return '浅绿';
+    return '绿色';
+  }
+  // 青（170~195）
+  if(hue<195){return dark?'深青':'青色';}
+  // 蓝（195~255）
+  if(hue<255){
+    if(V<0.42)return '藏蓝';
+    if(light)return '天蓝';
+    return '蓝色';
+  }
+  // 紫
+  if(hue<290){return light?'浅紫':'紫色';}
+  // 粉/玫红
+  if(hue<330){return '玫红';}
+  return '粉色';
 }
 function colorNameToHex(name){
-  const map={'白色':'#F5F1EA','黑色':'#2B2B2B','红色':'#C2503E','酒红':'#7A2E2E','橙色':'#D97B3E','米色':'#D9C7A7','燕麦':'#C9A66B','卡其':'#C9B48C','棕色':'#8A7A6A','深棕':'#5A4632','驼色':'#B8A48A','藏蓝':'#33415C','深蓝':'#2E3A4F','紫色':'#8A7AA0','粉色':'#E8A0A0','浅绿':'#9DB89A','墨绿':'#4E6B5A','灰色':'#9A938C','浅灰':'#C9C6C2','复古':'#8A7A6A'};
+  const map={'白色':'#F5F1EA','黑色':'#2B2B2B','浅灰':'#C9C6C2','灰色':'#9A938C','红色':'#C0392B','酒红':'#7A2E2E','橙色':'#D97B3E','杏色':'#E8C9A0','卡其':'#C9B48C','燕麦':'#C9A66B','米色':'#D9C7A7','绿色':'#4E8C6E','浅绿':'#9DB89A','墨绿':'#2E5A3A','青色':'#3AA8A0','深青':'#1A6A62','青绿':'#3A8A80','蓝色':'#3A5A8C','天蓝':'#87CEEB','藏蓝':'#1A3A6A','紫色':'#8A7AA0','浅紫':'#B8A8CC','玫红':'#C2506A','粉色':'#E8A0A0','复古':'#8A7A6A'};
   return map[name]||'#8A7A6A';
 }
 async function loadAI(){
@@ -815,6 +841,32 @@ function suggestName(cat,hex){
 function suggestStyle(cat){
   return {上装:'通勤 · 简约',下装:'通勤 · 简约',连衣裙:'温柔 · 正式',外套:'通勤 · 简约',鞋:'休闲 · 简约',袜:'简约',包:'通勤 · 简约',配饰:'温柔 · 简约'}[cat]||'简约';
 }
+/* 识别后切换类别：更新下拉框、名称、风格，供用户修正识别结果 */
+let _aiColorHex=null;
+const CAT_ORDER=['上装','下装','连衣裙','外套','鞋','包'];
+function aiSwitchCat(cat){
+  document.getElementById('fCat').value=cat;
+  if(_aiColorHex){
+    const name=suggestName(cat,_aiColorHex);
+    document.getElementById('fName').value=name;
+    const sBtn=document.getElementById('fStyle');
+    sBtn.innerHTML=STYLES.map(x=>{
+      const on=suggestStyle(cat).includes(x);
+      return `<button type="button" class="chip-sel${on?' on':''}" data-s="${x}" onclick="toggleChip(this,'style')">${x}</button>`;
+    }).join('');
+    // 更新高亮按钮
+    document.querySelectorAll('#aiCatBtns button').forEach(b=>{
+      const on=b.dataset.c===cat;
+      b.style.border='1px solid '+(on?'var(--sage)':'var(--line)');
+      b.style.background=on?'var(--sage)':'transparent';
+      b.style.color=on?'#fff':'var(--ink-soft)';
+    });
+    const rs=document.getElementById('aiResult');
+    const c0=_aiColorHex;
+    rs.innerHTML=`<span style="color:var(--sage);font-weight:600">✓ 已识别</span>：<b>${name}</b> · ${cat} · 主色 ${hexToColorName(c0)}<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${c0};margin-left:5px;vertical-align:-1px;border:1px solid #00000022"></span><br><span style="color:var(--ink-faint)">识别在本机完成，照片未上传。类别如不准可点下方切换，或手动修改。</span><br><span id="aiCatBtns" style="display:inline-flex;gap:6px;margin-top:6px;flex-wrap:wrap"></span>`;
+    document.getElementById('aiCatBtns').innerHTML=CAT_ORDER.map(c=>`<button type="button" data-c="${c}" onclick="aiSwitchCat('${c}')" style="padding:2px 10px;border-radius:12px;border:1px solid ${c===cat?'var(--sage)':'var(--line)'};background:${c===cat?'var(--sage)':'transparent'};color:${c===cat?'#fff':'var(--ink-soft)'};font-size:12px">${c}</button>`).join('');
+  }
+}
 async function autoDetect(){
   const file=document.getElementById('fPhoto').files[0];
   if(!file)return;
@@ -856,34 +908,55 @@ async function autoDetect(){
       return `<button type="button" class="chip-sel${on?' on':''}" data-s="${x}" onclick="toggleChip(this,'style')">${x}</button>`;
     }).join('');
     fColor=c0.hex;
+    _aiColorHex=c0.hex;
     st.style.display='none';
     rs.style.display='block';
-    rs.innerHTML=`<span style="color:var(--sage);font-weight:600">✓ 已识别</span>：<b>${name}</b> · ${cat} · 主色 ${c0.name}<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${c0.hex};margin-left:5px;vertical-align:-1px;border:1px solid #00000022"></span><br><span style="color:var(--ink-faint)">识别在本机完成，照片未上传。可手动修改下方各项。</span>`;
+    rs.innerHTML=`<span style="color:var(--sage);font-weight:600">✓ 已识别</span>：<b>${name}</b> · ${cat} · 主色 ${c0.name}<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${c0.hex};margin-left:5px;vertical-align:-1px;border:1px solid #00000022"></span><br><span style="color:var(--ink-faint)">识别在本机完成，照片未上传。类别如不准可点下方切换，或手动修改。</span><br><span id="aiCatBtns" style="display:inline-flex;gap:6px;margin-top:6px;flex-wrap:wrap"></span>`;
+    // 类别快速切换（识别可能不准，给用户一键改）
+    const btns=CAT_ORDER.map(c=>`<button type="button" data-c="${c}" onclick="aiSwitchCat('${c}')" style="padding:2px 10px;border-radius:12px;border:1px solid ${c===cat?'var(--sage)':'var(--line)'};background:${c===cat?'var(--sage)':'transparent'};color:${c===cat?'#fff':'var(--ink-soft)'};font-size:12px">${c}</button>`).join('');
+    document.getElementById('aiCatBtns').innerHTML=btns;
   }catch(e){
     st.innerHTML='⚠️ 识别失败：'+e.message+'（可手动填写，或把照片发给智能体识别）';
   }finally{
     URL.revokeObjectURL(url);
   }
 }
-/* 颜色聚类（返回主要颜色列表） */
+/* 颜色聚类（返回主要颜色列表）
+   改进：先排除背景（白/灰/黑墙面、桌面等大面积低饱和背景），
+   再在主体区域内按饱和度+亮度加权聚类，避免背景干扰主色。 */
 function dominantColors(img){
   const cvs=document.createElement('canvas');
-  cvs.width=80;cvs.height=80;
+  cvs.width=96;cvs.height=96;
   const ctx=cvs.getContext('2d');
-  ctx.drawImage(img,0,0,80,80);
-  const d=ctx.getImageData(0,0,80,80).data;
-  const cnt={};
+  ctx.drawImage(img,0,0,96,96);
+  const d=ctx.getImageData(0,0,96,96).data;
+  const N=96*96;
+  const cnt={}, satSum={};
+  let bodyPx=0;
   for(let i=0;i<d.length;i+=4){
     const a=d[i+3];if(a<120)continue;
-    const key=quantize(d[i],d[i+1],d[i+2]);
+    const r=d[i],g=d[i+1],b=d[i+2];
+    const mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx-mn;
+    // 排除低饱和背景（纯白/纯灰/纯黑）和过暗过亮像素
+    if(sat<18||mx<30||mn>225)continue;
+    const key=quantize(r,g,b);
     cnt[key]=(cnt[key]||0)+1;
+    satSum[key]=(satSum[key]||0)+1;
+    bodyPx++;
+  }
+  if(!bodyPx){ // 极端情况：全是低饱和，退回用原逻辑
+    for(let i=0;i<d.length;i+=4){
+      const a=d[i+3];if(a<120)continue;
+      const key=quantize(d[i],d[i+1],d[i+2]);
+      cnt[key]=(cnt[key]||0)+1;
+    }
   }
   const arr=Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
   const out=[];
   for(const [k,n] of arr){
     const [r,g,b]=k.split(',').map(Number);
     const hex='#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
-    out.push({hex,name:hexToColorName(hex),r,g,b,pct:n/6400});
+    out.push({hex,name:hexToColorName(hex),r,g,b,pct:n/(96*96)});
     if(out.length>=3)break;
   }
   if(!out.length)out.push({hex:'#8A7A6A',name:'复古',r:138,g:122,b:106,pct:1});
@@ -891,13 +964,14 @@ function dominantColors(img){
 }
 function shapeHintCat(sh){
   if(!sh)return null;
-  // 纵向长条 + 主体占满画面(>=75%)：连衣裙/长款
-  if(sh.vertical&&sh.ratio<0.85&&sh.heightPct>=0.75)return '连衣裙';
-  // 横向宽扁（平铺展开的上装/外套）
+  // 极窄长条 + 主体占满画面(>=80%)：连衣裙/长款（保守，避免误判）
+  if(sh.vertical&&sh.ratio<0.6&&sh.heightPct>=0.8)return '连衣裙';
+  // 横向宽扁（平铺展开的上装）
   if(sh.ratio>1.5)return '上装';
-  // 纵向但未占满、比例适中：上装或外套
+  // 其余默认上装（最常用，误判率低）
   if(sh.ratio>0.85&&sh.ratio<1.5)return '上装';
-  return null;
+  // 纵向但不够窄：也默认上装
+  return '上装';
 }
 function renderForm(){
   document.getElementById('fStyle').innerHTML=STYLES.map(s=>
