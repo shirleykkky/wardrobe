@@ -844,6 +844,25 @@ function suggestStyle(cat){
 /* 识别后切换类别：更新下拉框、名称、风格，供用户修正识别结果 */
 let _aiColorHex=null;
 const CAT_ORDER=['上装','下装','连衣裙','外套','鞋','包'];
+/* 复制"照片+识别信息"给智能体：用户粘贴到对话即可让智能体核实 */
+function copyAgentMsg(){
+  const img=document.getElementById('photoImg');
+  const file=document.getElementById('fPhoto').files[0];
+  if(!img||!file){alert('请先上传照片');return;}
+  const cat=document.getElementById('fCat').value;
+  const name=document.getElementById('fName').value;
+  const color=document.getElementById('fColorCustom').value;
+  const msg=`【衣物照片识别核实】我上传了一件衣物照片，请帮我核实：\n· 本地识别结果：${name}（${cat}，主色 ${hexToColorName(color)}）\n· 照片我会一起发给你，请核实类别/颜色/风格是否准确，并给我更准确的名称建议。`;
+  // 优先用 Clipboard API 复制文本
+  const done=()=>{const b=document.querySelector('#aiResult button');if(b){b.textContent='✅ 已复制文字，请再把照片发给我';b.style.background='var(--sage)'}setTimeout(()=>{if(b){b.textContent='📋 复制给智能体核实';b.style.background='var(--accent)'}},4000);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(msg).then(done).catch(()=>{fallbackCopy(msg);done();});
+  }else{fallbackCopy(msg);done();}
+}
+function fallbackCopy(text){
+  const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(ta);
+}
 function aiSwitchCat(cat){
   document.getElementById('fCat').value=cat;
   if(_aiColorHex){
@@ -863,7 +882,7 @@ function aiSwitchCat(cat){
     });
     const rs=document.getElementById('aiResult');
     const c0=_aiColorHex;
-    rs.innerHTML=`<span style="color:var(--sage);font-weight:600">✓ 已识别</span>：<b>${name}</b> · ${cat} · 主色 ${hexToColorName(c0)}<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${c0};margin-left:5px;vertical-align:-1px;border:1px solid #00000022"></span><br><span style="color:var(--ink-faint)">识别在本机完成，照片未上传。类别如不准可点下方切换，或手动修改。</span><br><span id="aiCatBtns" style="display:inline-flex;gap:6px;margin-top:6px;flex-wrap:wrap"></span>`;
+    rs.innerHTML=`<span style="color:var(--sage);font-weight:600">✓ 已识别</span>：<b>${name}</b> · ${cat} · 主色 ${hexToColorName(c0)}<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${c0};margin-left:5px;vertical-align:-1px;border:1px solid #00000022"></span><br><span style="color:var(--ink-faint)">识别在本机完成，照片未上传。类别如不准可点下方切换，或手动修改。</span><br><span id="aiCatBtns" style="display:inline-flex;gap:6px;margin-top:6px;flex-wrap:wrap"></span><br><button type="button" onclick="copyAgentMsg()" style="margin-top:8px;padding:5px 14px;border-radius:14px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;cursor:pointer">📋 复制给智能体核实</button>`;
     document.getElementById('aiCatBtns').innerHTML=CAT_ORDER.map(c=>`<button type="button" data-c="${c}" onclick="aiSwitchCat('${c}')" style="padding:2px 10px;border-radius:12px;border:1px solid ${c===cat?'var(--sage)':'var(--line)'};background:${c===cat?'var(--sage)':'transparent'};color:${c===cat?'#fff':'var(--ink-soft)'};font-size:12px">${c}</button>`).join('');
   }
 }
@@ -911,7 +930,7 @@ async function autoDetect(){
     _aiColorHex=c0.hex;
     st.style.display='none';
     rs.style.display='block';
-    rs.innerHTML=`<span style="color:var(--sage);font-weight:600">✓ 已识别</span>：<b>${name}</b> · ${cat} · 主色 ${c0.name}<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${c0.hex};margin-left:5px;vertical-align:-1px;border:1px solid #00000022"></span><br><span style="color:var(--ink-faint)">识别在本机完成，照片未上传。类别如不准可点下方切换，或手动修改。</span><br><span id="aiCatBtns" style="display:inline-flex;gap:6px;margin-top:6px;flex-wrap:wrap"></span>`;
+    rs.innerHTML=`<span style="color:var(--sage);font-weight:600">✓ 已识别</span>：<b>${name}</b> · ${cat} · 主色 ${c0.name}<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${c0.hex};margin-left:5px;vertical-align:-1px;border:1px solid #00000022"></span><br><span style="color:var(--ink-faint)">识别在本机完成，照片未上传。类别如不准可点下方切换，或手动修改。</span><br><span id="aiCatBtns" style="display:inline-flex;gap:6px;margin-top:6px;flex-wrap:wrap"></span><br><button type="button" onclick="copyAgentMsg()" style="margin-top:8px;padding:5px 14px;border-radius:14px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;cursor:pointer">📋 复制给智能体核实</button>`;
     // 类别快速切换（识别可能不准，给用户一键改）
     const btns=CAT_ORDER.map(c=>`<button type="button" data-c="${c}" onclick="aiSwitchCat('${c}')" style="padding:2px 10px;border-radius:12px;border:1px solid ${c===cat?'var(--sage)':'var(--line)'};background:${c===cat?'var(--sage)':'transparent'};color:${c===cat?'#fff':'var(--ink-soft)'};font-size:12px">${c}</button>`).join('');
     document.getElementById('aiCatBtns').innerHTML=btns;
